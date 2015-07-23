@@ -12,52 +12,28 @@ import (
 	"os"
 )
 
+var influxUrl = fmt.Sprintf(
+	"http://%s:%s/db/%s/series?u=%s&p=%s",
+	os.Getenv("INFLUXDB_HOST"),
+	os.Getenv("INFLUXDB_PORT"),
+	os.Getenv("INFLUXDB_DB"),
+	os.Getenv("INFLUXDB_USER"),
+	os.Getenv("INFLUXDB_PWD"),
+)
+
 func WriteData(msg lora.Message) error {
 	log.Print("ATTEMPTING TO WRITE DATA")
-	log.Printf("ORIGINAL JSON WAS: %s", string(msg.Payload))
-
 	if msg.Payload == nil {
 		return errors.New("No payload provided")
 	}
-	payload := make(map[string]interface{})
-	err := json.Unmarshal(msg.Payload, &payload)
+	log.Printf("ORIGINAL JSON WAS: %s", string(msg.Payload))
+
+	resultBytes, err := formatJsonForInflux(msg.Payload)
 	if err != nil {
 		return err
 	}
-
-	keys := make([]string, 0)
-	vals := make([]interface{}, 0)
-
-	for key, val := range payload {
-		keys = append(keys, key)
-		vals = append(vals, val)
-	}
-
-	result := []interface{}{
-		map[string]interface{}{
-			"name":    "push",
-			"columns": keys,
-			"points":  [][]interface{}{vals},
-		},
-	}
-
-	resultBytes, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
 	log.Printf("POSTING FORMATTED DATA: %s", string(resultBytes))
-
-	url := fmt.Sprintf(
-		"http://%s:%s/db/%s/series?u=%s&p=%s",
-		os.Getenv("INFLUXDB_HOST"),
-		os.Getenv("INFLUXDB_PORT"),
-		os.Getenv("INFLUXDB_DB"),
-		os.Getenv("INFLUXDB_USER"),
-		os.Getenv("INFLUXDB_PWD"),
-	)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(resultBytes))
+	req, err := http.NewRequest("POST", influxUrl, bytes.NewBuffer(resultBytes))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,4 +51,46 @@ func WriteData(msg lora.Message) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 	return nil
+}
+
+func formatJsonForInflux(original []byte) ([]byte, error) {
+	var tableName string
+	payload := make(map[string]map[string]interface{})
+	err := json.Unmarshal(original, &payload)
+
+	keys := make([]string, 0)
+	vals := make([]interface{}, 0)
+
+	sobj, sok := payload["stat"]
+	robj, rok := payload["rxpk"]
+	if sok {
+		tableName = "stat"
+		for key, val := range sobj {
+			keys = append(keys, key)
+			vals = append(vals, val)
+		}
+	} else if rok {
+		tableName = "rxpk"
+		for key, val := range robj {
+			keys = append(keys, key)
+			vals = append(vals, val)
+		}
+	} else {
+		return nil, errors.New("Unknown key")
+	}
+
+	result := []interface{}{
+		map[string]interface{}{
+			"name":    tableName,
+			"columns": keys,
+			"points":  [][]interface{}{vals},
+		},
+	}
+
+	resultBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return resultBytes, nil
 }
