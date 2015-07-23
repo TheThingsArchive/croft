@@ -20,7 +20,7 @@ func WriteData(msg lora.Message) error {
 		return errors.New("No payload provided")
 	}
 	payload := make(map[string]interface{})
-	err := json.Unmarshal(msg.Payload, payload)
+	err := json.Unmarshal(msg.Payload, &payload)
 	if err != nil {
 		return err
 	}
