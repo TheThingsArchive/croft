@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	// "github.com/thethingsnetwork/croft/lora"
 	"log"
 	"net"
 )
@@ -14,7 +15,9 @@ func StartUDPServer(port int) {
 	CheckError(err)
 	defer ServerConn.Close()
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 2048)
+
+	// lc := lora.NewConn(ServerConn)
 
 	for {
 		n, addr, err := ServerConn.ReadFromUDP(buf)
