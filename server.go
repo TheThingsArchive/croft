@@ -24,9 +24,12 @@ func StartUDPServer(port int) {
 		}
 		log.Printf("Parsed Message: %#v", msg)
 		if msg.Identifier == lora.PUSH_DATA {
-			WriteData(*msg)
+			err := WriteData(*msg)
+			if err != nil {
+				log.Print(err.Error())
+			}
 			log.Printf("ACKING")
-			err := msg.Ack()
+			err = msg.Ack()
 			if err != nil {
 				log.Printf("ERROR ACKING: %s", err.Error())
 			}
