@@ -21,7 +21,7 @@ type Message struct {
 	Token           []byte
 	Identifier      int
 	Payload         *json.RawMessage
-	GatewayEUI      int64
+	GatewayEUI      net.HardwareAddr
 	Address         *net.UDPAddr
 }
 
@@ -39,10 +39,18 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		log.Print("Error: ", err)
 		return nil, err
 	}
+	log.Print("Received raw bytes", buf[0:n], " from ", addr)
 	log.Print("Received ", string(buf[0:n]), " from ", addr)
 	msg := &Message{
-		Address:    addr,
-		Identifier: int(buf[3]),
+		Address:         addr,
+		ProtocolVersion: int(buf[0]),
+		Token:           buf[1:3],
+		Identifier:      int(buf[3]),
 	}
 	return msg, nil
+}
+
+func (m *Message) Ack() error {
+
+	return nil
 }
