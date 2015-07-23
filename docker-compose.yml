@@ -1,0 +1,3 @@
+croft:
+  build: .
+  env_file: .env

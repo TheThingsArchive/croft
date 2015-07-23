@@ -1,7 +1,6 @@
 package lora
 
 import (
-	"encoding/json"
 	"log"
 	"net"
 )
@@ -20,7 +19,7 @@ type Message struct {
 	ProtocolVersion int
 	Token           []byte
 	Identifier      int
-	Payload         *json.RawMessage
+	Payload         []byte
 	GatewayEUI      net.HardwareAddr
 	SourceAddr      *net.UDPAddr
 }
@@ -46,6 +45,10 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		ProtocolVersion: int(buf[0]),
 		Token:           buf[1:3],
 		Identifier:      int(buf[3]),
+	}
+
+	if msg.Identifier == PUSH_DATA {
+		msg.Payload = buf[12:n]
 	}
 	return msg, nil
 }
