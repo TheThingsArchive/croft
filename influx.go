@@ -28,7 +28,7 @@ func WriteData(msg lora.Message) error {
 	}
 	log.Printf("ORIGINAL JSON WAS: %s", string(msg.Payload))
 
-	resultBytes, err := formatJsonForInflux(msg.Payload)
+	resultBytes, err := FormatJsonBytesForInflux(msg.Payload)
 	if err != nil {
 		return err
 	}
@@ -53,44 +53,57 @@ func WriteData(msg lora.Message) error {
 	return nil
 }
 
-func formatJsonForInflux(original []byte) ([]byte, error) {
-	var tableName string
+func FormatJsonBytesForInflux(original []byte) ([]byte, error) {
 	payload := make(map[string]map[string]interface{})
 	err := json.Unmarshal(original, &payload)
-
-	keys := make([]string, 0)
-	vals := make([]interface{}, 0)
-
-	sobj, sok := payload["stat"]
-	robj, rok := payload["rxpk"]
+	if err != nil {
+		return nil, err
+	}
+	_, sok := payload["stat"]
+	_, rok := payload["rxpk"]
 	if sok {
-		tableName = "stat"
-		for key, val := range sobj {
-			keys = append(keys, key)
-			vals = append(vals, val)
-		}
+		return formatStat(payload)
 	} else if rok {
-		tableName = "rxpk"
-		for key, val := range robj {
-			keys = append(keys, key)
-			vals = append(vals, val)
-		}
+		log.Print("TODO: formatRXPK")
+		return nil, errors.New("formatRXPK not handled")
 	} else {
 		return nil, errors.New("Unknown key")
 	}
+}
 
-	result := []interface{}{
-		map[string]interface{}{
-			"name":    tableName,
-			"columns": keys,
-			"points":  [][]interface{}{vals},
-		},
+func formatStat(payload map[string]map[string]interface{}) ([]byte, error) {
+	vals := make([][]interface{}, 1)
+
+	keys := []string{
+		"timex",
+		"lati",
+		"long",
+		"alti",
 	}
 
-	resultBytes, err := json.Marshal(result)
+	s := payload["stat"]
+
+	vals[0] = make([]interface{}, 4)
+	vals[0][0] = s["time"]
+	vals[0][1] = s["lati"]
+	vals[0][2] = s["long"]
+	vals[0][3] = s["alti"]
+
+	byts, err := json.Marshal([]interface{}{
+		map[string]interface{}{
+			"name":    "stat",
+			"columns": keys,
+			"points":  vals,
+		},
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	return resultBytes, nil
+	return byts, nil
+}
+
+func formatRXPK(payload map[string]map[string]interface{}) []interface{} {
+	return nil
 }

@@ -24,6 +24,13 @@ type Message struct {
 	SourceAddr      *net.UDPAddr
 }
 
+type Stat struct {
+	Time string  `json:time`
+	Lati float64 `json:lati`
+	Long float64 `json:long`
+	Alti float64 `json:alti`
+}
+
 type Conn struct {
 	Raw *net.UDPConn
 }
