@@ -22,7 +22,7 @@ type Message struct {
 	Identifier      int
 	Payload         *json.RawMessage
 	GatewayEUI      net.HardwareAddr
-	Address         *net.UDPAddr
+	SourceAddr      *net.UDPAddr
 }
 
 type Conn struct {
@@ -42,7 +42,7 @@ func (c *Conn) ReadMessage() (*Message, error) {
 	log.Print("Received raw bytes", buf[0:n], " from ", addr)
 	log.Print("Received ", string(buf[0:n]), " from ", addr)
 	msg := &Message{
-		Address:         addr,
+		SourceAddr:      addr,
 		ProtocolVersion: int(buf[0]),
 		Token:           buf[1:3],
 		Identifier:      int(buf[3]),
@@ -51,6 +51,19 @@ func (c *Conn) ReadMessage() (*Message, error) {
 }
 
 func (m *Message) Ack() error {
-
+	conn, err := net.DialUDP("udp", nil, m.SourceAddr)
+	defer conn.Close()
+	if err != nil {
+		return err
+	}
+	p := make([]byte, 4)
+	p[0] = byte(m.ProtocolVersion)
+	p[1] = m.Token[0]
+	p[2] = m.Token[1]
+	p[3] = PUSH_ACK
+	_, err = conn.Write(p)
+	if err != nil {
+		return err
+	}
 	return nil
 }
