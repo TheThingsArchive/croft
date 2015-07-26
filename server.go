@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+var lc *lora.Conn
+
 func StartUDPServer(port int) {
 	ServerAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", port))
 	CheckError(err)
@@ -15,7 +17,7 @@ func StartUDPServer(port int) {
 	CheckError(err)
 	defer ServerConn.Close()
 
-	lc := lora.NewConn(ServerConn)
+	lc = lora.NewConn(ServerConn)
 
 	for {
 		msg, err := lc.ReadMessage()
