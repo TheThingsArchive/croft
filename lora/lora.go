@@ -3,6 +3,7 @@ package lora
 import (
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -19,16 +20,50 @@ type Message struct {
 	ProtocolVersion int
 	Token           []byte
 	Identifier      int
+	SourceAddr      *net.UDPAddr
 	Payload         []byte
 	GatewayEUI      net.HardwareAddr
-	SourceAddr      *net.UDPAddr
 }
 
 type Stat struct {
-	Time string  `json:time`
-	Lati float64 `json:lati`
-	Long float64 `json:long`
-	Alti float64 `json:alti`
+	Time string  `json:"time"`
+	Lati float64 `json:"lati"`
+	Long float64 `json:"long"`
+	Alti float64 `json:"alti"`
+	Rxnb int     `json:"rxnb"`
+	Rxok int     `json:"rxok"`
+	Rxfw int     `json:"rxfw"`
+	Ackr float64 `json:"ackr"`
+	Dwnb int     `json:"dwnb"`
+	Txnb int     `json:"txnb"`
+}
+
+type RXPK struct {
+	Time time.Time `json:"time"`
+	Tmst int       `json:"tmst"`
+	Chan int       `json:"chan"`
+	Rfch int       `json:"rfch"`
+	Freq float64   `json:"freq"`
+	Stat int       `json:"stat"`
+	Modu string    `json:"modu"`
+	Datr string    `json:"datr"`
+	Codr string    `json:"codr"`
+	Rssi int       `json:"rssi"`
+	Lsnr float64   `json:"lsnr"`
+	Size int       `json:"size"`
+	Data string    `json:"data"`
+}
+
+type TXPX struct {
+	Imme bool    `json:"imme"`
+	Freq float64 `json:"freq"`
+	Rfch int     `json:"rfch"`
+	Powe int     `json:"powe"`
+	Modu string  `json:"modu"`
+	Datr int     `json:"datr"`
+	Fdev int     `json:"fdev"`
+	Size int     `json:"size"`
+	Data string  `json:"data"`
 }
 
 type Conn struct {
@@ -45,8 +80,6 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		log.Print("Error: ", err)
 		return nil, err
 	}
-	log.Print("Received raw bytes", buf[0:n], " from ", addr)
-	log.Print("Received ", string(buf[0:n]), " from ", addr)
 	msg := &Message{
 		SourceAddr:      addr,
 		ProtocolVersion: int(buf[0]),
