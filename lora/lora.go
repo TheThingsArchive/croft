@@ -86,16 +86,22 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		log.Print("Error: ", err)
 		return nil, err
 	}
+	return c.parseMessage(addr, buf, n)
+}
 
+func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error) {
 	var header MessageHeader
-	err = binary.Read(bytes.NewReader(buf), binary.BigEndian, &header)
+	err := binary.Read(bytes.NewReader(b), binary.BigEndian, &header)
+	if err != nil {
+		return nil, err
+	}
 	msg := &Message{
 		SourceAddr: addr,
 		Conn:       c,
 		Header:     &header,
 	}
 	if header.Identifier == PUSH_DATA {
-		msg.Payload = buf[12:n]
+		msg.Payload = b[12:n]
 	}
 	return msg, nil
 }
@@ -108,7 +114,7 @@ func (m *Message) Ack() error {
 	}
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, &ack)
+	err := binary.Write(buf, binary.BigEndian, ack)
 	if err != nil {
 		return err
 	}
