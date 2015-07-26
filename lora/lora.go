@@ -21,6 +21,7 @@ type Message struct {
 	Token           []byte
 	Identifier      int
 	SourceAddr      *net.UDPAddr
+	Conn            *Conn
 	Payload         []byte
 	GatewayEUI      net.HardwareAddr
 }
@@ -82,6 +83,7 @@ func (c *Conn) ReadMessage() (*Message, error) {
 	}
 	msg := &Message{
 		SourceAddr:      addr,
+		Conn:            c,
 		ProtocolVersion: int(buf[0]),
 		Token:           buf[1:3],
 		Identifier:      int(buf[3]),
@@ -94,17 +96,12 @@ func (c *Conn) ReadMessage() (*Message, error) {
 }
 
 func (m *Message) Ack() error {
-	conn, err := net.DialUDP("udp", nil, m.SourceAddr)
-	defer conn.Close()
-	if err != nil {
-		return err
-	}
 	p := make([]byte, 4)
 	p[0] = byte(m.ProtocolVersion)
 	p[1] = m.Token[0]
 	p[2] = m.Token[1]
 	p[3] = PUSH_ACK
-	_, err = conn.Write(p)
+	_, err := m.Conn.Raw.WriteToUDP(p, m.SourceAddr)
 	if err != nil {
 		return err
 	}
