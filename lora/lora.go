@@ -16,8 +16,6 @@ const (
 	PULL_RESP = iota
 )
 
-var buf = make([]byte, 2048)
-
 type Conn struct {
 	Raw *net.UDPConn
 }
@@ -81,6 +79,7 @@ func NewConn(r *net.UDPConn) *Conn {
 }
 
 func (c *Conn) ReadMessage() (*Message, error) {
+	buf := make([]byte, 2048)
 	n, addr, err := c.Raw.ReadFromUDP(buf)
 	if err != nil {
 		log.Print("Error: ", err)
