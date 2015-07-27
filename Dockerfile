@@ -3,7 +3,6 @@
 FROM golang:latest
 
 #Cache dependencies
-RUN go get "github.com/influxdb/influxdb/client"
 RUN go get "github.com/joho/godotenv"
 
 # Copy the local package files to the container's workspace.
