@@ -35,14 +35,14 @@ func WriteData(msg lora.Message) error {
 	log.Printf("POSTING FORMATTED DATA: %s", string(resultBytes))
 	req, err := http.NewRequest("POST", influxUrl, bytes.NewBuffer(resultBytes))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer resp.Body.Close()
 

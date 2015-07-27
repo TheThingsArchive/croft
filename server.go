@@ -25,7 +25,7 @@ func StartUDPServer(port int) {
 			continue
 		}
 		log.Printf("Parsed Message: %#v", msg)
-		if msg.Identifier == lora.PUSH_DATA {
+		if msg.Header.Identifier == lora.PUSH_DATA {
 			err := WriteData(*msg)
 			if err != nil {
 				log.Print(err.Error())

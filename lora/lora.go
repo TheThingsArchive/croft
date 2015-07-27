@@ -1,6 +1,8 @@
 package lora
 
 import (
+	"bytes"
+	"encoding/binary"
 	"log"
 	"net"
 	"time"
@@ -16,14 +18,21 @@ const (
 
 var buf = make([]byte, 2048)
 
+type Conn struct {
+	Raw *net.UDPConn
+}
+
 type Message struct {
-	ProtocolVersion int
-	Token           []byte
-	Identifier      int
-	SourceAddr      *net.UDPAddr
-	Conn            *Conn
-	Payload         []byte
-	GatewayEUI      net.HardwareAddr
+	SourceAddr *net.UDPAddr
+	Conn       *Conn
+	Header     *MessageHeader
+	Payload    []byte
+}
+
+type MessageHeader struct {
+	ProtocolVersion byte
+	Token           uint16
+	Identifier      byte
 }
 
 type Stat struct {
@@ -67,10 +76,6 @@ type TXPX struct {
 	Data string  `json:"data"`
 }
 
-type Conn struct {
-	Raw *net.UDPConn
-}
-
 func NewConn(r *net.UDPConn) *Conn {
 	return &Conn{r}
 }
@@ -81,27 +86,40 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		log.Print("Error: ", err)
 		return nil, err
 	}
-	msg := &Message{
-		SourceAddr:      addr,
-		Conn:            c,
-		ProtocolVersion: int(buf[0]),
-		Token:           buf[1:3],
-		Identifier:      int(buf[3]),
-	}
+	return c.parseMessage(addr, buf, n)
+}
 
-	if msg.Identifier == PUSH_DATA {
-		msg.Payload = buf[12:n]
+func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error) {
+	var header MessageHeader
+	err := binary.Read(bytes.NewReader(b), binary.BigEndian, &header)
+	if err != nil {
+		return nil, err
+	}
+	msg := &Message{
+		SourceAddr: addr,
+		Conn:       c,
+		Header:     &header,
+	}
+	if header.Identifier == PUSH_DATA {
+		msg.Payload = b[12:n]
 	}
 	return msg, nil
 }
 
 func (m *Message) Ack() error {
-	p := make([]byte, 4)
-	p[0] = byte(m.ProtocolVersion)
-	p[1] = m.Token[0]
-	p[2] = m.Token[1]
-	p[3] = PUSH_ACK
-	_, err := m.Conn.Raw.WriteToUDP(p, m.SourceAddr)
+	ack := &MessageHeader{
+		ProtocolVersion: m.Header.ProtocolVersion,
+		Token:           m.Header.Token,
+		Identifier:      PUSH_ACK,
+	}
+
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, ack)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.Conn.Raw.WriteToUDP(buf.Bytes(), m.SourceAddr)
 	if err != nil {
 		return err
 	}
