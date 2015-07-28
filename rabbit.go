@@ -7,65 +7,61 @@ import (
 	"time"
 )
 
-func EnsureRabbitConnection() (*amqp.Connection, error) {
-	// Connects opens an AMQP connection from the credentials in the URL.
+const (
+	RABBIT_ATTEMPTS = 20
+	RABBIT_EXCHANGE = "messages"
+)
+
+type RabbitPublisher struct {
+	conn    *amqp.Connection
+	channel *amqp.Channel
+}
+
+func ConnectRabbitPublisher() (Publisher, error) {
 	var err error
-	for i := 0; i < 20; i++ {
-		conn, err := amqp.Dial(os.Getenv("AMQP_URI"))
+	for i := 0; i < RABBIT_ATTEMPTS; i++ {
+		uri := os.Getenv("AMQP_URI")
+		conn, err := amqp.Dial(uri)
 		if err != nil {
-			log.Print("Couldn't get rabbit connection")
-			log.Print(err.Error())
+			log.Printf("Failed to connect: %s", err.Error())
 			time.Sleep(time.Duration(2) * time.Second)
-			log.Print("Retrying.....")
 		} else {
-			return conn, nil
+			publisher := &RabbitPublisher{conn, nil}
+			log.Printf("Connected to %s", uri)
+			return publisher, nil
 		}
 	}
-	log.Print("Got rabbit connection")
 	return nil, err
 }
 
-func ConfigureRabbit() (*amqp.Channel, error) {
-	c, err := rabbitConn.Channel()
+func (p *RabbitPublisher) Configure() error {
+	c, err := p.conn.Channel()
 	if err != nil {
-		log.Printf("channel.open: %s", err)
-		return nil, err
+		log.Printf("Failed to open channel: %v", err)
+		return err
 	}
 
-	// We declare our topology on both the publisher and consumer to ensure
-	// they
-	// are the same.  This is part of AMQP being a programmable messaging
-	// model.
-	//
-	// See the Channel.Consume example for the complimentary declare.
-	err = c.ExchangeDeclare("messages", "topic", true, false, false, false, nil)
+	err = c.ExchangeDeclare(RABBIT_EXCHANGE, "topic", true, false, false, false, nil)
 	if err != nil {
-		log.Printf("exchange.declare: %v", err)
-		return nil, err
+		log.Printf("Failed to declare exchange: %v", err)
+		return err
 	}
-	return c, nil
+
+	p.channel = c
+	return nil
 }
 
-func PublishRabbitMessage() error {
-	// Prepare this message to be persistent.  Your publishing
-	// requirements may
-	// be different.
+func (p *RabbitPublisher) Publish(bindingKey string, json string, timestamp time.Time) error {
 	msg := amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
-		Timestamp:    time.Now(),
-		ContentType:  "text/plain",
-		Body:         []byte("Go Go AMQP!"),
+		Timestamp:    timestamp,
+		ContentType:  "application/json",
+		Body:         []byte(json),
 	}
-	// This is not a mandatory delivery, so it will be
-	// dropped if there are no
-	// queues bound to the logs exchange.
-	err := rabbitChannel.Publish("messages", "stat", false, false, msg)
+
+	err := p.channel.Publish(RABBIT_EXCHANGE, bindingKey, false, false, msg)
 	if err != nil {
-		// Since publish is asynchronous this can
-		// happen if the network connection
-		// is reset or if the server has run out
-		// of resources.
-		log.Printf("basic.publish: %v", err)
+		log.Printf("Failed to publish: %v", err)
 		return err
 	}
 	return nil

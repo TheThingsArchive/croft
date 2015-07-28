@@ -1,32 +1,28 @@
 package main
 
 import (
-	"github.com/streadway/amqp"
 	"log"
 )
 
 var (
-	rabbitConn    *amqp.Connection
-	rabbitChannel *amqp.Channel
+	publisher Publisher
 )
 
 func main() {
 	log.Print("Croft is ALIVE")
 
-	var err error
-	rabbitConn, err = EnsureRabbitConnection()
+	connectPublisher()
+	startUDPServer(1700)
+}
+
+func connectPublisher() {
+	publisher, err := ConnectRabbitPublisher()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer rabbitConn.Close()
-	rabbitChannel, err = ConfigureRabbit()
+
+	err = publisher.Configure()
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = PublishRabbitMessage()
-	if err != nil {
-		log.Fatal(err)
-	}
-	go StartUDPServer(1700)
-	ServeHTTPOverview()
 }

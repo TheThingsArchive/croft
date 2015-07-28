@@ -24,7 +24,7 @@ type Message struct {
 	SourceAddr *net.UDPAddr
 	Conn       *Conn
 	Header     *MessageHeader
-	Payload    []byte
+	Payload    *Payload
 }
 
 type MessageHeader struct {
@@ -100,7 +100,11 @@ func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error
 		Header:     &header,
 	}
 	if header.Identifier == PUSH_DATA {
-		msg.Payload = b[12:n]
+		payload, err := parsePayload(string(b[12:n]))
+		if err != nil {
+			return nil, err
+		}
+		msg.Payload = payload
 	}
 	return msg, nil
 }
