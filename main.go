@@ -16,7 +16,8 @@ func main() {
 }
 
 func connectPublisher() {
-	publisher, err := ConnectRabbitPublisher()
+	var err error
+	publisher, err = ConnectRabbitPublisher()
 	if err != nil {
 		log.Fatal(err)
 	}

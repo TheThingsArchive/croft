@@ -49,9 +49,12 @@ func getNextPayloadObject(p *Payload, input string) (*Payload, error) {
 				stopVAL = stopJSON
 			}
 		} else {
-			startVAL = startARRAY
-			stopVAL = stopARRAY
+			startVAL = startJSON
+			stopVAL = stopJSON
 		}
+	}
+	if startVAL == -1 || stopVAL == -1 {
+		return nil, errors.New("Invalid input")
 	}
 
 	value := input[startVAL:(stopVAL + 1)]
