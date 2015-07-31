@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/streadway/amqp"
+	"github.com/thethingsnetwork/server-shared"
 	"log"
 	"os"
 	"time"
@@ -51,17 +54,33 @@ func (p *RabbitPublisher) Configure() error {
 	return nil
 }
 
-func (p *RabbitPublisher) Publish(bindingKey string, json string, timestamp time.Time) error {
-	msg := amqp.Publishing{
-		DeliveryMode: amqp.Persistent,
-		Timestamp:    timestamp,
-		ContentType:  "application/json",
-		Body:         []byte(json),
+func (p *RabbitPublisher) Publish(data interface{}) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Failed to marshal data: %s", err.Error())
+		return err
 	}
 
-	err := p.channel.Publish(RABBIT_EXCHANGE, bindingKey, false, false, msg)
+	msg := amqp.Publishing{
+		DeliveryMode: amqp.Persistent,
+		//Timestamp:    timestamp,
+		ContentType: "application/json",
+		Body:        body,
+	}
+
+	var bindingKey string
+	switch data.(type) {
+	case shared.GatewayStatus:
+		bindingKey = "gatewayStatus"
+	case shared.RxPacket:
+		bindingKey = "rxPacket"
+	default:
+		return errors.New("Invalid type to publish")
+	}
+
+	err = p.channel.Publish(RABBIT_EXCHANGE, bindingKey, false, false, msg)
 	if err != nil {
-		log.Printf("Failed to publish: %v", err)
+		log.Printf("Failed to publish: %s", err.Error())
 		return err
 	}
 	return nil
