@@ -63,22 +63,21 @@ func (p *RabbitPublisher) Publish(data interface{}) error {
 
 	msg := amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
-		//Timestamp:    timestamp,
-		ContentType: "application/json",
-		Body:        body,
+		ContentType:  "application/json",
+		Body:         body,
 	}
 
-	var bindingKey string
+	var routingKey string
 	switch data.(type) {
-	case shared.GatewayStatus:
-		bindingKey = "gatewayStatus"
-	case shared.RxPacket:
-		bindingKey = "rxPacket"
+	case *shared.GatewayStatus:
+		routingKey = "gateway.status"
+	case *shared.RxPacket:
+		routingKey = "gateway.rx"
 	default:
 		return errors.New("Invalid type to publish")
 	}
 
-	err = p.channel.Publish(RABBIT_EXCHANGE, bindingKey, false, false, msg)
+	err = p.channel.Publish(RABBIT_EXCHANGE, routingKey, false, false, msg)
 	if err != nil {
 		log.Printf("Failed to publish: %s", err.Error())
 		return err

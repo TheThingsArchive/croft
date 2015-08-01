@@ -36,7 +36,7 @@ func readUDPMessages(port int, messages chan interface{}) {
 func handleMessage(msg *lora.Message, messages chan interface{}) {
 	switch msg.Header.Identifier {
 	case lora.PUSH_DATA:
-		publishPushMessagePayloads(msg.Payload.(*lora.PushMessagePayload), messages)
+		publishPushMessagePayloads(msg.Payload.(lora.PushMessagePayload), messages)
 	}
 
 	err := msg.Ack()
@@ -45,7 +45,7 @@ func handleMessage(msg *lora.Message, messages chan interface{}) {
 	}
 }
 
-func publishPushMessagePayloads(payload *lora.PushMessagePayload, messages chan interface{}) {
+func publishPushMessagePayloads(payload lora.PushMessagePayload, messages chan interface{}) {
 	if payload.Stat != nil {
 		stat, err := convertStat(payload.Stat)
 		if err != nil {
