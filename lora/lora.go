@@ -3,9 +3,9 @@ package lora
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"log"
 	"net"
-	"time"
 )
 
 const (
@@ -24,13 +24,18 @@ type Message struct {
 	SourceAddr *net.UDPAddr
 	Conn       *Conn
 	Header     *MessageHeader
-	Payload    *Payload
+	Payload    interface{}
 }
 
 type MessageHeader struct {
 	ProtocolVersion byte
 	Token           uint16
 	Identifier      byte
+}
+
+type PushMessagePayload struct {
+	RXPK []*RXPK `json:"rxpk,omitempty"`
+	Stat *Stat   `json:"stat,omitempty"`
 }
 
 type Stat struct {
@@ -47,19 +52,19 @@ type Stat struct {
 }
 
 type RXPK struct {
-	Time time.Time `json:"time"`
-	Tmst int       `json:"tmst"`
-	Chan int       `json:"chan"`
-	Rfch int       `json:"rfch"`
-	Freq float64   `json:"freq"`
-	Stat int       `json:"stat"`
-	Modu string    `json:"modu"`
-	Datr string    `json:"datr"`
-	Codr string    `json:"codr"`
-	Rssi int       `json:"rssi"`
-	Lsnr float64   `json:"lsnr"`
-	Size int       `json:"size"`
-	Data string    `json:"data"`
+	Time string  `json:"time"`
+	Tmst int     `json:"tmst"`
+	Chan int     `json:"chan"`
+	Rfch int     `json:"rfch"`
+	Freq float64 `json:"freq"`
+	Stat int     `json:"stat"`
+	Modu string  `json:"modu"`
+	Datr string  `json:"datr"`
+	Codr string  `json:"codr"`
+	Rssi int     `json:"rssi"`
+	Lsnr float64 `json:"lsnr"`
+	Size int     `json:"size"`
+	Data string  `json:"data"`
 }
 
 type TXPX struct {
@@ -100,7 +105,8 @@ func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error
 		Header:     &header,
 	}
 	if header.Identifier == PUSH_DATA {
-		payload, err := parsePayload(string(b[12:n]))
+		var payload PushMessagePayload
+		err := json.Unmarshal(b[12:n], &payload)
 		if err != nil {
 			return nil, err
 		}

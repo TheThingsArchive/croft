@@ -6,9 +6,11 @@ import (
 )
 
 func TestParseMessage(t *testing.T) {
-	buf := []byte{0x1, 0x10, 0x20, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x16, 0x31, 0x3f, 0xe3}
+	buf := bytes.NewBuffer([]byte{0x1, 0x10, 0x20, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0})
+	buf.WriteString(`{"stat":{"lati":100}}`)
+
 	c := NewConn(nil)
-	msg, err := c.parseMessage(nil, buf, len(buf))
+	msg, err := c.parseMessage(nil, buf.Bytes(), buf.Len())
 	if err != nil {
 		t.Error(err)
 	}
@@ -23,7 +25,13 @@ func TestParseMessage(t *testing.T) {
 	if msg.Header.Identifier != PUSH_DATA {
 		t.Error("The identifier is not parsed correctly")
 	}
-	if !bytes.Equal(msg.Payload, []byte{0x16, 0x31, 0x3f, 0xe3}) {
+
+	payload := msg.Payload.(PushMessagePayload)
+	t.Logf("%#v", payload)
+	if payload.Stat == nil || payload.RXPK != nil {
 		t.Error("The payload is not parsed correctly")
+	}
+	if payload.Stat.Lati != 100 {
+		t.Error("The tmst field is not parsed correctly")
 	}
 }

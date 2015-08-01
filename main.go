@@ -4,26 +4,34 @@ import (
 	"log"
 )
 
-var (
-	publisher Publisher
-)
-
 func main() {
 	log.Print("Croft is ALIVE")
 
-	connectPublisher()
-	startUDPServer(1700)
+	publisher, err := connectPublisher()
+	if err != nil {
+		log.Fatalf("Failed to connect publisher: %s", err.Error())
+	}
+
+	messages := make(chan interface{})
+	go readUDPMessages(1700, messages)
+	for msg := range messages {
+		err = publisher.Publish(msg)
+		if err != nil {
+			log.Printf("Failed to publish message %#v: %s", msg, err.Error())
+		}
+	}
 }
 
-func connectPublisher() {
-	var err error
-	publisher, err = ConnectRabbitPublisher()
+func connectPublisher() (Publisher, error) {
+	publisher, err := ConnectRabbitPublisher()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	err = publisher.Configure()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	return publisher, nil
 }
