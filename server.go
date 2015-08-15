@@ -36,7 +36,7 @@ func readUDPMessages(port int, messages chan interface{}) {
 func handleMessage(msg *lora.Message, messages chan interface{}) {
 	switch msg.Header.Identifier {
 	case lora.PUSH_DATA:
-		publishPushMessagePayloads(msg.Payload.(lora.PushMessagePayload), messages)
+		publishPushMessagePayloads(msg.GatewayEui, msg.Payload.(lora.PushMessagePayload), messages)
 	}
 
 	err := msg.Ack()
@@ -45,9 +45,9 @@ func handleMessage(msg *lora.Message, messages chan interface{}) {
 	}
 }
 
-func publishPushMessagePayloads(payload lora.PushMessagePayload, messages chan interface{}) {
+func publishPushMessagePayloads(gatewayEui string, payload lora.PushMessagePayload, messages chan interface{}) {
 	if payload.Stat != nil {
-		stat, err := convertStat(payload.Stat)
+		stat, err := convertStat(gatewayEui, payload.Stat)
 		if err != nil {
 			log.Printf("Failed to convert Stat: %s", err.Error())
 		}
@@ -56,7 +56,7 @@ func publishPushMessagePayloads(payload lora.PushMessagePayload, messages chan i
 
 	if payload.RXPK != nil {
 		for _, rxpk := range payload.RXPK {
-			packet, err := convertRXPK(rxpk)
+			packet, err := convertRXPK(gatewayEui, rxpk)
 			if err != nil {
 				log.Printf("Failed to convert RXPK: %s", err.Error())
 				continue
@@ -66,8 +66,9 @@ func publishPushMessagePayloads(payload lora.PushMessagePayload, messages chan i
 	}
 }
 
-func convertStat(stat *lora.Stat) (*shared.GatewayStatus, error) {
+func convertStat(gatewayEui string, stat *lora.Stat) (*shared.GatewayStatus, error) {
 	return &shared.GatewayStatus{
+		Eui:               gatewayEui,
 		Time:              stat.Time,
 		Latitude:          &stat.Lati,
 		Longitude:         &stat.Long,
@@ -81,9 +82,10 @@ func convertStat(stat *lora.Stat) (*shared.GatewayStatus, error) {
 	}, nil
 }
 
-func convertRXPK(rxpk *lora.RXPK) (*shared.RxPacket, error) {
+func convertRXPK(gatewayEui string, rxpk *lora.RXPK) (*shared.RxPacket, error) {
 	return &shared.RxPacket{
-		Time: rxpk.Time,
-		Data: rxpk.Data,
+		GatewayEui: gatewayEui,
+		Time:       rxpk.Time,
+		Data:       rxpk.Data,
 	}, nil
 }
