@@ -24,6 +24,7 @@ type Message struct {
 	SourceAddr *net.UDPAddr
 	Conn       *Conn
 	Header     *MessageHeader
+	GatewayEui string
 	Payload    interface{}
 }
 
@@ -105,6 +106,7 @@ func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error
 		Header:     &header,
 	}
 	if header.Identifier == PUSH_DATA {
+		msg.GatewayEui = fmt.Sprintf("%X", b[4:12])
 		var payload PushMessagePayload
 		err := json.Unmarshal(b[12:n], &payload)
 		if err != nil {
