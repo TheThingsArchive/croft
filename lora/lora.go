@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -41,32 +42,32 @@ type PushMessagePayload struct {
 }
 
 type Stat struct {
-	Time string  `json:"time"`
-	Lati float64 `json:"lati"`
-	Long float64 `json:"long"`
-	Alti float64 `json:"alti"`
-	Rxnb int     `json:"rxnb"`
-	Rxok int     `json:"rxok"`
-	Rxfw int     `json:"rxfw"`
-	Ackr float64 `json:"ackr"`
-	Dwnb int     `json:"dwnb"`
-	Txnb int     `json:"txnb"`
+	Time time.Time `json:"time"`
+	Lati float64   `json:"lati"`
+	Long float64   `json:"long"`
+	Alti float64   `json:"alti"`
+	Rxnb int       `json:"rxnb"`
+	Rxok int       `json:"rxok"`
+	Rxfw int       `json:"rxfw"`
+	Ackr float64   `json:"ackr"`
+	Dwnb int       `json:"dwnb"`
+	Txnb int       `json:"txnb"`
 }
 
 type RXPK struct {
-	Time string  `json:"time"`
-	Tmst int     `json:"tmst"`
-	Chan int     `json:"chan"`
-	Rfch int     `json:"rfch"`
-	Freq float64 `json:"freq"`
-	Stat int     `json:"stat"`
-	Modu string  `json:"modu"`
-	Datr string  `json:"datr"`
-	Codr string  `json:"codr"`
-	Rssi int     `json:"rssi"`
-	Lsnr float64 `json:"lsnr"`
-	Size int     `json:"size"`
-	Data string  `json:"data"`
+	Time time.Time `json:"time"`
+	Tmst int       `json:"tmst"`
+	Chan int       `json:"chan"`
+	Rfch int       `json:"rfch"`
+	Freq float64   `json:"freq"`
+	Stat int       `json:"stat"`
+	Modu string    `json:"modu"`
+	Datr string    `json:"datr"`
+	Codr string    `json:"codr"`
+	Rssi int       `json:"rssi"`
+	Lsnr float64   `json:"lsnr"`
+	Size int       `json:"size"`
+	Data string    `json:"data"`
 }
 
 type TXPX struct {

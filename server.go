@@ -85,6 +85,7 @@ func convertStat(gatewayEui string, stat *lora.Stat) (*shared.GatewayStatus, err
 func convertRXPK(gatewayEui string, rxpk *lora.RXPK) (*shared.RxPacket, error) {
 	return &shared.RxPacket{
 		GatewayEui: gatewayEui,
+		NodeEui:    fmt.Sprintf("%X", rxpk.Data[0:4]),
 		Time:       rxpk.Time,
 		Data:       rxpk.Data,
 	}, nil
