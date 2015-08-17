@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/thethingsnetwork/croft/lora"
 	"github.com/thethingsnetwork/server-shared"
 	"log"
 	"net"
+	"time"
 )
 
 func readUDPMessages(port int, messages chan interface{}) {
@@ -45,13 +48,14 @@ func handleMessage(msg *lora.Message, messages chan interface{}) {
 	}
 }
 
-func publishPushMessagePayloads(gatewayEui string, payload lora.PushMessagePayload, messages chan interface{}) {
+func publishPushMessagePayloads(gatewayEui []byte, payload lora.PushMessagePayload, messages chan interface{}) {
 	if payload.Stat != nil {
 		stat, err := convertStat(gatewayEui, payload.Stat)
 		if err != nil {
 			log.Printf("Failed to convert Stat: %s", err.Error())
+		} else {
+			messages <- stat
 		}
-		messages <- stat
 	}
 
 	if payload.RXPK != nil {
@@ -66,10 +70,16 @@ func publishPushMessagePayloads(gatewayEui string, payload lora.PushMessagePaylo
 	}
 }
 
-func convertStat(gatewayEui string, stat *lora.Stat) (*shared.GatewayStatus, error) {
+func convertStat(gatewayEui []byte, stat *lora.Stat) (*shared.GatewayStatus, error) {
+	t, err := time.Parse(time.RFC822, stat.Time)
+	if err != nil {
+		log.Printf("Failed to parse time %s: %s", stat.Time, err.Error())
+		t = time.Now()
+	}
+
 	return &shared.GatewayStatus{
-		Eui:               gatewayEui,
-		Time:              stat.Time,
+		Eui:               fmt.Sprintf("%X", gatewayEui),
+		Time:              t,
 		Latitude:          &stat.Lati,
 		Longitude:         &stat.Long,
 		Altitude:          &stat.Alti,
@@ -82,11 +92,61 @@ func convertStat(gatewayEui string, stat *lora.Stat) (*shared.GatewayStatus, err
 	}, nil
 }
 
-func convertRXPK(gatewayEui string, rxpk *lora.RXPK) (*shared.RxPacket, error) {
+func convertRXPK(gatewayEui []byte, rxpk *lora.RXPK) (*shared.RxPacket, error) {
+	data, err := rxpk.ParseData()
+	if err != nil {
+		log.Printf("Failed to parse RXPK: %s", err.Error())
+		return nil, err
+	}
+
+	networkKey, err := getNetworkKey(gatewayEui, data.DevAddr)
+	if err != nil {
+		log.Printf("Failed to get key (gateway %X, node %X): %s", gatewayEui, data.DevAddr, err.Error())
+		return nil, err
+	}
+
+	var key []byte
+	if data.FPort == 0 {
+		key = networkKey
+	} else {
+		key, err = getAppKey(gatewayEui, data.DevAddr)
+		if err != nil {
+			log.Printf("Failed to get key (gateway %X, node %X): %s", gatewayEui, data.DevAddr, err.Error())
+			return nil, err
+		}
+	}
+
+	ok, err := data.TestIntegrity(networkKey)
+	if err != nil {
+		log.Printf("Failed to test integrity: %s", err.Error())
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New("Integrity test failed")
+	}
+
+	payload, err := data.DecryptPayload(key)
+	if err != nil {
+		log.Printf("Error decrypting data: %s", err.Error())
+		return nil, err
+	}
+
 	return &shared.RxPacket{
-		GatewayEui: gatewayEui,
-		NodeEui:    fmt.Sprintf("%X", rxpk.Data[0:4]),
+		GatewayEui: fmt.Sprintf("%X", gatewayEui),
+		NodeEui:    fmt.Sprintf("%X", data.DevAddr),
 		Time:       rxpk.Time,
-		Data:       rxpk.Data,
+		RawData:    rxpk.Data,
+		Data:       base64.StdEncoding.EncodeToString(payload),
 	}, nil
+}
+
+func getNetworkKey(gatewayEui, devAddr []byte) ([]byte, error) {
+	// TODO: Implement fetching the right network key. Now returning Semtech's default key
+	key := []byte{0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C}
+	return key, nil
+}
+
+func getAppKey(gatewayEui, devAddr []byte) ([]byte, error) {
+	// TODO: Implement fetching the right application key
+	return getNetworkKey(gatewayEui, devAddr)
 }
