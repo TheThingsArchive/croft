@@ -61,7 +61,7 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 }
 
 func (d *PHYPayload) DecryptPayload(key []byte) ([]byte, error) {
-	if len(d.MACPayload) < 7+len(d.FOpts) {
+	if len(d.MACPayload) <= 8+len(d.FOpts) {
 		return nil, errors.New("No data to decrypt")
 	}
 	data := d.MACPayload[8+len(d.FOpts):]
