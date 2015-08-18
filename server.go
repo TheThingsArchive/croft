@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/thethingsnetwork/croft/lora"
@@ -133,20 +135,26 @@ func convertRXPK(gatewayEui []byte, rxpk *lora.RXPK) (*shared.RxPacket, error) {
 
 	return &shared.RxPacket{
 		GatewayEui: fmt.Sprintf("%X", gatewayEui),
-		NodeEui:    fmt.Sprintf("%X", data.DevAddr),
+		NodeEui:    fmtDevAddr(data.DevAddr),
 		Time:       rxpk.Time,
 		RawData:    rxpk.Data,
 		Data:       base64.StdEncoding.EncodeToString(payload),
 	}, nil
 }
 
-func getNetworkKey(gatewayEui, devAddr []byte) ([]byte, error) {
+func fmtDevAddr(devAddr uint32) string {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, devAddr)
+	return fmt.Sprintf("%X", buf.Bytes())
+}
+
+func getNetworkKey(gatewayEui []byte, devAddr uint32) ([]byte, error) {
 	// TODO: Implement fetching the right network key. Now returning Semtech's default key
 	key := []byte{0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C}
 	return key, nil
 }
 
-func getAppKey(gatewayEui, devAddr []byte) ([]byte, error) {
+func getAppKey(gatewayEui []byte, devAddr uint32) ([]byte, error) {
 	// TODO: Implement fetching the right application key
 	return getNetworkKey(gatewayEui, devAddr)
 }

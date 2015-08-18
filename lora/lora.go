@@ -18,7 +18,7 @@ type PHYPayload struct {
 	FCnt       uint16
 	FOpts      []byte
 	FPort      byte
-	DevAddr    []byte
+	DevAddr    uint32
 }
 
 func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
@@ -37,7 +37,7 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 		return nil, errors.New("Payload should at least be 7 bytes")
 	}
 
-	data.DevAddr = data.MACPayload[0:4]
+	binary.Read(bytes.NewReader(data.MACPayload[0:4]), binary.LittleEndian, &data.DevAddr)
 	data.FCtrl = data.MACPayload[4]
 	binary.Read(bytes.NewReader(data.MACPayload[5:7]), binary.LittleEndian, &data.FCnt)
 
@@ -80,7 +80,7 @@ func (d *PHYPayload) DecryptPayload(key []byte) ([]byte, error) {
 	for len(group) > 0 {
 		a := new(bytes.Buffer)
 		a.Write([]byte{0x1, 0x0, 0x0, 0x0, 0x0, 0x0})
-		a.Write(d.DevAddr)
+		binary.Write(a, binary.LittleEndian, d.DevAddr)
 		binary.Write(a, binary.LittleEndian, uint32(d.FCnt))
 		a.WriteByte(0x0)
 		a.WriteByte(byte(i))
@@ -103,7 +103,7 @@ func (d *PHYPayload) TestIntegrity(key []byte) (bool, error) {
 	b0 := new(bytes.Buffer)
 	b0.Write([]byte{0x49, 0x0, 0x0, 0x0, 0x0})
 	b0.WriteByte(0x0)
-	b0.Write(d.DevAddr)
+	binary.Write(b0, binary.LittleEndian, d.DevAddr)
 	binary.Write(b0, binary.LittleEndian, uint32(d.FCnt))
 	b0.WriteByte(0x0)
 	b0.WriteByte(byte(1 + len(d.MACPayload)))
