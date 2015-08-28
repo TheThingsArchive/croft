@@ -23,15 +23,20 @@ type PHYPayload struct {
 
 func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 	data := &PHYPayload{
-		MHDR:       buf[0],
-		MACPayload: buf[1 : len(buf)-4],
-		MIC:        buf[len(buf)-4 : len(buf)],
+		MHDR: buf[0],
 	}
 
 	majorVersion := data.MHDR & 0x3
 	if majorVersion != 0 {
 		return nil, errors.New(fmt.Sprintf("Major version %d not supported", majorVersion))
 	}
+
+	if len(buf) < 5 {
+		return nil, errors.New("The data is should be at least 5 bytes")
+	}
+
+	data.MACPayload = buf[1 : len(buf)-4]
+	data.MIC = buf[len(buf)-4 : len(buf)]
 
 	if len(data.MACPayload) < 7 {
 		return nil, errors.New("Payload should at least be 7 bytes")
