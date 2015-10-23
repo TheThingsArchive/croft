@@ -32,7 +32,7 @@ func readUDPMessages(port int, messages chan interface{}) {
 			log.Printf("Failed to read message: %s", err.Error())
 			continue
 		}
-		log.Printf("Parsed message: %#v", msg.Header)
+		log.Printf("Parsed message: %#v", msg)
 
 		go handleMessage(msg, messages)
 	}
@@ -136,7 +136,7 @@ func convertRXPK(gatewayEui []byte, rxpk *lora.RXPK) (*shared.RxPacket, error) {
 	return &shared.RxPacket{
 		GatewayEui: fmt.Sprintf("%X", gatewayEui),
 		NodeEui:    fmtDevAddr(data.DevAddr),
-		Time:       rxpk.Time,
+		Time:       time.Now(), //rxpk.Time,
 		RawData:    rxpk.Data,
 		Data:       base64.StdEncoding.EncodeToString(payload),
 	}, nil
