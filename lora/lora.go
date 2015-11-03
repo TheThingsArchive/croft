@@ -2,129 +2,134 @@ package lora
 
 import (
 	"bytes"
+	"crypto/aes"
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"github.com/jacobsa/crypto/cmac"
 	"log"
-	"net"
-	"time"
 )
 
-const (
-	PUSH_DATA = iota
-	PUSH_ACK  = iota
-	PULL_DATA = iota
-	PULL_ACK  = iota
-	PULL_RESP = iota
-)
-
-type Conn struct {
-	Raw *net.UDPConn
+type PHYPayload struct {
+	MHDR       byte
+	MACPayload []byte
+	MIC        []byte
+	FCtrl      byte
+	FCnt       uint16
+	FOpts      []byte
+	FPort      byte
+	DevAddr    uint32
 }
 
-type Message struct {
-	SourceAddr *net.UDPAddr
-	Conn       *Conn
-	Header     *MessageHeader
-	Payload    *Payload
-}
-
-type MessageHeader struct {
-	ProtocolVersion byte
-	Token           uint16
-	Identifier      byte
-}
-
-type Stat struct {
-	Time string  `json:"time"`
-	Lati float64 `json:"lati"`
-	Long float64 `json:"long"`
-	Alti float64 `json:"alti"`
-	Rxnb int     `json:"rxnb"`
-	Rxok int     `json:"rxok"`
-	Rxfw int     `json:"rxfw"`
-	Ackr float64 `json:"ackr"`
-	Dwnb int     `json:"dwnb"`
-	Txnb int     `json:"txnb"`
-}
-
-type RXPK struct {
-	Time time.Time `json:"time"`
-	Tmst int       `json:"tmst"`
-	Chan int       `json:"chan"`
-	Rfch int       `json:"rfch"`
-	Freq float64   `json:"freq"`
-	Stat int       `json:"stat"`
-	Modu string    `json:"modu"`
-	Datr string    `json:"datr"`
-	Codr string    `json:"codr"`
-	Rssi int       `json:"rssi"`
-	Lsnr float64   `json:"lsnr"`
-	Size int       `json:"size"`
-	Data string    `json:"data"`
-}
-
-type TXPX struct {
-	Imme bool    `json:"imme"`
-	Freq float64 `json:"freq"`
-	Rfch int     `json:"rfch"`
-	Powe int     `json:"powe"`
-	Modu string  `json:"modu"`
-	Datr int     `json:"datr"`
-	Fdev int     `json:"fdev"`
-	Size int     `json:"size"`
-	Data string  `json:"data"`
-}
-
-func NewConn(r *net.UDPConn) *Conn {
-	return &Conn{r}
-}
-
-func (c *Conn) ReadMessage() (*Message, error) {
-	buf := make([]byte, 2048)
-	n, addr, err := c.Raw.ReadFromUDP(buf)
-	if err != nil {
-		log.Print("Error: ", err)
-		return nil, err
+func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
+	data := &PHYPayload{
+		MHDR: buf[0],
 	}
-	return c.parseMessage(addr, buf, n)
-}
 
-func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error) {
-	var header MessageHeader
-	err := binary.Read(bytes.NewReader(b), binary.BigEndian, &header)
-	if err != nil {
-		return nil, err
+	mType := (data.MHDR & 0xe0) >> 5
+	log.Printf("The message type is %d", mType)
+
+	majorVersion := data.MHDR & 0x2
+	if majorVersion != 0 {
+		return nil, errors.New(fmt.Sprintf("Major version %d not supported\nData:%#v", majorVersion, buf[1:]))
 	}
-	msg := &Message{
-		SourceAddr: addr,
-		Conn:       c,
-		Header:     &header,
+
+	if len(buf) < 5 {
+		return nil, errors.New("The data is should be at least 5 bytes")
 	}
-	if header.Identifier == PUSH_DATA {
-		payload, err := parsePayload(string(b[12:n]))
-		if err != nil {
-			return nil, err
+
+	data.MACPayload = buf[1 : len(buf)-4]
+	data.MIC = buf[len(buf)-4 : len(buf)]
+
+	if len(data.MACPayload) < 7 {
+		return nil, errors.New("Payload should at least be 7 bytes")
+	}
+
+	binary.Read(bytes.NewReader(data.MACPayload[0:4]), binary.LittleEndian, &data.DevAddr)
+	data.FCtrl = data.MACPayload[4]
+	binary.Read(bytes.NewReader(data.MACPayload[5:7]), binary.LittleEndian, &data.FCnt)
+
+	index := 7
+	fOptsLen := int(data.FCtrl & 0xf)
+	if fOptsLen > 0 {
+		if len(data.MACPayload) < index+fOptsLen {
+			return nil, errors.New("Payload does not contain indicated options length")
 		}
-		msg.Payload = payload
+		data.FOpts = data.MACPayload[index : index+fOptsLen]
+		index += fOptsLen
+	} else {
+		data.FOpts = make([]byte, 0)
 	}
-	return msg, nil
+
+	if len(data.MACPayload) > index+1 {
+		data.FPort = data.MACPayload[index]
+	}
+
+	return data, nil
 }
 
-func (m *Message) Ack() error {
-	ack := &MessageHeader{
-		ProtocolVersion: m.Header.ProtocolVersion,
-		Token:           m.Header.Token,
-		Identifier:      PUSH_ACK,
+func (d *PHYPayload) DecryptPayload(key []byte) ([]byte, error) {
+	if len(d.MACPayload) <= 8+len(d.FOpts) {
+		return nil, errors.New("No data to decrypt")
+	}
+	data := d.MACPayload[8+len(d.FOpts):]
+
+	// See LoRaWAN specification 1r0 4.3.3.1
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		log.Printf("Failed to create AES cipher: %s", err.Error())
+		return nil, err
 	}
 
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, ack)
+	buf := bytes.NewBuffer(data)
+	i := 1
+	group := buf.Next(block.BlockSize())
+	result := make([]byte, 0, len(data))
+	for len(group) > 0 {
+		a := new(bytes.Buffer)
+		a.Write([]byte{0x1, 0x0, 0x0, 0x0, 0x0, 0x0})
+		binary.Write(a, binary.LittleEndian, d.DevAddr)
+		binary.Write(a, binary.LittleEndian, uint32(d.FCnt))
+		a.WriteByte(0x0)
+		a.WriteByte(byte(i))
+
+		key := make([]byte, block.BlockSize())
+		block.Encrypt(key, a.Bytes())
+
+		for j := 0; j < len(group); j++ {
+			result = append(result, group[j]^key[j])
+		}
+
+		i++
+		group = buf.Next(block.BlockSize())
+	}
+	return result, nil
+}
+
+func (d *PHYPayload) TestIntegrity(key []byte) (bool, error) {
+	// See LoRaWAN specification 1r0 4.4
+	b0 := new(bytes.Buffer)
+	b0.Write([]byte{0x49, 0x0, 0x0, 0x0, 0x0})
+	b0.WriteByte(0x0)
+	binary.Write(b0, binary.LittleEndian, d.DevAddr)
+	binary.Write(b0, binary.LittleEndian, uint32(d.FCnt))
+	b0.WriteByte(0x0)
+	b0.WriteByte(byte(1 + len(d.MACPayload)))
+	b0.WriteByte(d.MHDR)
+	b0.Write(d.MACPayload)
+
+	hash, err := cmac.New(key)
 	if err != nil {
-		return err
+		log.Printf("Failed to initialize CMAC: %s", err.Error())
+		return false, err
 	}
 
-	_, err = m.Conn.Raw.WriteToUDP(buf.Bytes(), m.SourceAddr)
+	_, err = hash.Write(b0.Bytes())
 	if err != nil {
-		return err
+		log.Printf("Failed to hash data: %s", err.Error())
+		return false, err
 	}
-	return nil
+
+	calculatedMIC := hash.Sum([]byte{})[0:4]
+	return bytes.Equal(calculatedMIC, d.MIC), nil
 }
