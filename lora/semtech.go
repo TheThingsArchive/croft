@@ -46,19 +46,19 @@ type Stat struct {
 	Lati float64 `json:"lati"`
 	Long float64 `json:"long"`
 	Alti float64 `json:"alti"`
-	Rxnb int     `json:"rxnb"`
-	Rxok int     `json:"rxok"`
-	Rxfw int     `json:"rxfw"`
+	Rxnb uint    `json:"rxnb"`
+	Rxok uint    `json:"rxok"`
+	Rxfw uint    `json:"rxfw"`
 	Ackr float64 `json:"ackr"`
-	Dwnb int     `json:"dwnb"`
-	Txnb int     `json:"txnb"`
+	Dwnb uint    `json:"dwnb"`
+	Txnb uint    `json:"txnb"`
 }
 
 type RXPK struct {
 	Time time.Time `json:"time"`
-	Tmst int       `json:"tmst"`
-	Chan int       `json:"chan"`
-	Rfch int       `json:"rfch"`
+	Tmst uint      `json:"tmst"`
+	Chan uint      `json:"chan"`
+	Rfch uint      `json:"rfch"`
 	Freq float64   `json:"freq"`
 	Stat int       `json:"stat"`
 	Modu string    `json:"modu"`
@@ -66,19 +66,19 @@ type RXPK struct {
 	Codr string    `json:"codr"`
 	Rssi int       `json:"rssi"`
 	Lsnr float64   `json:"lsnr"`
-	Size int       `json:"size"`
+	Size uint      `json:"size"`
 	Data string    `json:"data"`
 }
 
 type TXPX struct {
 	Imme bool    `json:"imme"`
 	Freq float64 `json:"freq"`
-	Rfch int     `json:"rfch"`
-	Powe int     `json:"powe"`
+	Rfch uint    `json:"rfch"`
+	Powe uint    `json:"powe"`
 	Modu string  `json:"modu"`
-	Datr int     `json:"datr"`
-	Fdev int     `json:"fdev"`
-	Size int     `json:"size"`
+	Datr uint    `json:"datr"`
+	Fdev uint    `json:"fdev"`
+	Size uint    `json:"size"`
 	Data string  `json:"data"`
 }
 
