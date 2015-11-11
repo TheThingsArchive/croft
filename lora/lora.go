@@ -29,7 +29,7 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 	mType := (data.MHDR & 0xe0) >> 5
 	log.Printf("The message type is %d", mType)
 
-	majorVersion := data.MHDR & 0x2
+	majorVersion := data.MHDR & 0x3
 	if majorVersion != 0 {
 		return nil, errors.New(fmt.Sprintf("Major version %d not supported\nData:%#v", majorVersion, buf[1:]))
 	}
