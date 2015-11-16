@@ -32,8 +32,6 @@ func readUDPMessages(port int, messages chan interface{}) {
 			log.Printf("Failed to read message: %s", err.Error())
 			continue
 		}
-		log.Printf("Parsed message: %#v", msg)
-
 		go handleMessage(msg, messages)
 	}
 }

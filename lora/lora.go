@@ -26,12 +26,11 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 		MHDR: buf[0],
 	}
 
-	mType := (data.MHDR & 0xe0) >> 5
-	log.Printf("The message type is %d", mType)
+	//mType := (data.MHDR & 0xe0) >> 5
 
 	majorVersion := data.MHDR & 0x3
 	if majorVersion != 0 {
-		return nil, errors.New(fmt.Sprintf("Major version %d not supported\nData:%#v", majorVersion, buf[1:]))
+		return nil, errors.New(fmt.Sprintf("Major version %d not supported", majorVersion))
 	}
 
 	if len(buf) < 5 {
