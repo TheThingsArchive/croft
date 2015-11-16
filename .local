@@ -3,3 +3,4 @@ INFLUXDB_PORT=8086
 INFLUXDB_USERNAME=root
 INFLUXDB_PASSWORD=root
 AMQP_URI=amqp://guest:guest@rabbitmq:5672
+MOSQUITTO_URI=mosquitto
