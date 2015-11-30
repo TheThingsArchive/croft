@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -121,10 +123,20 @@ func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error
 }
 
 func (m *Message) Ack() error {
+	var id byte
+	switch m.Header.Identifier {
+	case PUSH_DATA:
+		id = PUSH_ACK
+	case PULL_DATA:
+		id = PULL_ACK
+	default:
+		return errors.New(fmt.Sprintf("Unknown message identifier %d to acknowledge", m.Header.Identifier))
+	}
+
 	ack := &MessageHeader{
 		ProtocolVersion: m.Header.ProtocolVersion,
 		Token:           m.Header.Token,
-		Identifier:      PUSH_ACK,
+		Identifier:      id,
 	}
 
 	buf := new(bytes.Buffer)
