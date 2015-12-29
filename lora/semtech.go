@@ -110,6 +110,9 @@ func (c *Conn) parseMessage(addr *net.UDPAddr, b []byte, n int) (*Message, error
 		Header:     &header,
 	}
 	if header.Identifier == PUSH_DATA {
+		if n < 12 {
+			return nil, errors.New("Parse message failed, invalid size")
+		}
 		msg.GatewayEui = b[4:12]
 		var payload PushMessagePayload
 		err := json.Unmarshal(b[12:n], &payload)
