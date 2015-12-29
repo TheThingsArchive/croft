@@ -16,8 +16,8 @@ const (
 	PUSH_DATA = iota
 	PUSH_ACK  = iota
 	PULL_DATA = iota
-	PULL_ACK  = iota
 	PULL_RESP = iota
+	PULL_ACK  = iota
 )
 
 type Conn struct {
