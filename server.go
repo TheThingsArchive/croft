@@ -6,11 +6,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/thethingsnetwork/croft/lora"
-	"github.com/thethingsnetwork/server-shared"
 	"log"
 	"net"
 	"time"
+
+	"github.com/thethingsnetwork/croft/lora"
+	"github.com/thethingsnetwork/server-shared"
 )
 
 func readUDPMessages(port int, messages chan interface{}) {
