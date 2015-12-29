@@ -133,7 +133,7 @@ func (m *Message) Ack() error {
 	case PULL_DATA:
 		id = PULL_ACK
 	default:
-		return errors.New(fmt.Sprintf("Unknown message identifier %d to acknowledge", m.Header.Identifier))
+		return fmt.Errorf("Unknown message identifier %d to acknowledge", m.Header.Identifier)
 	}
 
 	ack := &MessageHeader{

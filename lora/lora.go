@@ -6,8 +6,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/jacobsa/crypto/cmac"
 	"log"
+
+	"github.com/jacobsa/crypto/cmac"
 )
 
 type PHYPayload struct {
@@ -26,22 +27,20 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 		MHDR: buf[0],
 	}
 
-	//mType := (data.MHDR & 0xe0) >> 5
-
 	majorVersion := data.MHDR & 0x3
 	if majorVersion != 0 {
 		return nil, errors.New(fmt.Sprintf("Major version %d not supported", majorVersion))
 	}
 
 	if len(buf) < 5 {
-		return nil, errors.New("The data is should be at least 5 bytes")
+		return nil, errors.New("The data should be at least 5 bytes")
 	}
 
 	data.MACPayload = buf[1 : len(buf)-4]
 	data.MIC = buf[len(buf)-4 : len(buf)]
 
 	if len(data.MACPayload) < 7 {
-		return nil, errors.New("Payload should at least be 7 bytes")
+		return nil, errors.New("Payload should be at least be 7 bytes")
 	}
 
 	binary.Read(bytes.NewReader(data.MACPayload[0:4]), binary.LittleEndian, &data.DevAddr)
@@ -67,13 +66,13 @@ func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
 	return data, nil
 }
 
+// DecryptPayload decrypts the payload, see LoRaWAN specification 1r0 4.3.3.1
 func (d *PHYPayload) DecryptPayload(key []byte) ([]byte, error) {
 	if len(d.MACPayload) <= 8+len(d.FOpts) {
 		return nil, errors.New("No data to decrypt")
 	}
 	data := d.MACPayload[8+len(d.FOpts):]
 
-	// See LoRaWAN specification 1r0 4.3.3.1
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		log.Printf("Failed to create AES cipher: %s", err.Error())
@@ -105,8 +104,8 @@ func (d *PHYPayload) DecryptPayload(key []byte) ([]byte, error) {
 	return result, nil
 }
 
+// TestIntegrity performs the message integrity check (MIC), see LoRaWAN specification 1r0 4.4
 func (d *PHYPayload) TestIntegrity(key []byte) (bool, error) {
-	// See LoRaWAN specification 1r0 4.4
 	b0 := new(bytes.Buffer)
 	b0.Write([]byte{0x49, 0x0, 0x0, 0x0, 0x0})
 	b0.WriteByte(0x0)

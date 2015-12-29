@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/streadway/amqp"
-	"github.com/thethingsnetwork/server-shared"
 	"log"
 	"os"
 	"time"
+
+	"github.com/streadway/amqp"
+	"github.com/thethingsnetwork/server-shared"
 )
 
 const (
