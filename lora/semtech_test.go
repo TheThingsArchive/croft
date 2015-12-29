@@ -37,6 +37,27 @@ func TestParseMessage(t *testing.T) {
 	}
 }
 
+func TestParseMessageWithGarbage(t *testing.T) {
+	buf := bytes.NewBuffer([]byte{0x1, 0x10, 0x20, 0x0, 0x0, 0x0, 0x0, 0x0})
+
+	c := NewConn(nil)
+	_, err := c.parseMessage(nil, buf.Bytes(), buf.Len())
+	if err == nil {
+		t.Error("Parse message did not validate input length")
+	}
+}
+
+func TestParseMessageWithInvalidPayload(t *testing.T) {
+	buf := bytes.NewBuffer([]byte{0x1, 0x10, 0x20, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0})
+	buf.WriteString("invalid payload")
+
+	c := NewConn(nil)
+	_, err := c.parseMessage(nil, buf.Bytes(), buf.Len())
+	if err == nil {
+		t.Error("Parse message did not validate payload")
+	}
+}
+
 func TestConvertRXPK(t *testing.T) {
 	// Arrange
 	key := []byte{0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C}
