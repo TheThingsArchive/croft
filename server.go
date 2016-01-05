@@ -135,7 +135,7 @@ func convertRXPK(gatewayEui []byte, rxpk *lora.RXPK) (*shared.RxPacket, error) {
 	return &shared.RxPacket{
 		GatewayEui: fmt.Sprintf("%X", gatewayEui),
 		NodeEui:    fmtDevAddr(data.DevAddr),
-		Time:       rxpk.Time,
+		Time:       time.Now(), // rxpk.Time,
 		Frequency:  &rxpk.Freq,
 		DataRate:   rxpk.Datr,
 		Rssi:       &rxpk.Rssi,
