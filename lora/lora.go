@@ -23,6 +23,10 @@ type PHYPayload struct {
 }
 
 func ParsePHYPayload(buf []byte) (*PHYPayload, error) {
+	if len(buf) == 0 {
+		return nil, errors.New("No data")
+	}
+
 	data := &PHYPayload{
 		MHDR: buf[0],
 	}
