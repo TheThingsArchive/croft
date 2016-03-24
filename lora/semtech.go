@@ -157,7 +157,7 @@ func (m *Message) Ack() error {
 }
 
 func (rxpk *RXPK) ParseData() (*PHYPayload, error) {
-	buf, err := base64.RawStdEncoding.DecodeString(strings.TrimRight(rxpk.Data, "\""))
+	buf, err := base64.RawStdEncoding.DecodeString(strings.TrimRight(rxpk.Data, "="))
 	if err != nil {
 		log.Printf("Failed to decode base64 data: %s", err.Error())
 		return nil, err
