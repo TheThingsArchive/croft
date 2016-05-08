@@ -38,6 +38,8 @@ func readUDPMessages(port int, messages chan interface{}) {
 }
 
 func handleMessage(msg *lora.Message, messages chan interface{}) {
+	log.Printf("Handling message from %v", msg.SourceAddr)
+
 	switch msg.Header.Identifier {
 	case lora.PUSH_DATA:
 		publishPushMessagePayloads(msg.GatewayEui, msg.Payload.(lora.PushMessagePayload), messages)
